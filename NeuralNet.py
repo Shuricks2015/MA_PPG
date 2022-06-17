@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import DataLoader
-from Utils import ppgDaLiA_Dataset
+from Utils import ppgDaLiA_Dataset, check_accuracy
 from pathlib import Path
 import os
 from tqdm import tqdm
@@ -120,9 +120,9 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 # Hyperparameters
 in_channel = 1
 num_classes = 1
-learning_rate = 1e-4
+learning_rate = 5e-5
 batch_size = 64
-num_epochs = 30
+num_epochs = 100
 
 # Load Data
 train_set = ppgDaLiA_Dataset(str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_train/processed_dataset/')
@@ -134,7 +134,7 @@ test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False)
 model = VGG19_1D(in_channels=in_channel, num_classes=num_classes).to(device)
 
 # Loss and optimizer
-criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((12966/30084)))
+criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((12966 / 30084)))
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
 # Train network
@@ -164,33 +164,5 @@ for epoch in range(num_epochs):
 
 
 # Check accuracy on training & test set
-def check_accuracy(loader, model):
-    num_correct = 0
-    num_samples = 0
-
-    # Toggle for evaluation
-    model.eval()
-
-    with torch.no_grad():
-        sig = nn.Sigmoid()
-        for x, y in loader:
-            x = x.to(device=device)
-            y = y.to(device=device)
-            y = y.reshape((y.shape[0], 1))
-
-            scores = model(x)
-            scores = sig(scores)
-            scores = torch.round(scores)
-
-            # _,predictions= scores.max(1)  # only for multiclass classification
-            num_correct += (scores == y).sum()
-            num_samples += scores.size(0)
-
-        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct) / float(num_samples) * 100:.2f}')
-
-    # Switch back to training
-    model.train()
-
-
-check_accuracy(train_loader, model)
-check_accuracy(test_loader, model)
+check_accuracy(train_loader, model, device)
+check_accuracy(test_loader, model, device)

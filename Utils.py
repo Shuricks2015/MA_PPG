@@ -1,6 +1,7 @@
 from torch.utils.data import Dataset
 import torch
 import numpy as np
+import torch.nn as nn
 
 
 class ppgDaLiA_Dataset(Dataset):
@@ -23,3 +24,36 @@ class ppgDaLiA_Dataset(Dataset):
     def __getitem__(self, index):
         return self.x[index], self.y[index]
 
+
+def check_accuracy(loader, model, device):
+    """
+    Calculate binary accuracy with added sigmoid
+    :param loader: DataLoader
+    :param model: nn.Module
+    :return: none
+    """
+    num_correct = 0
+    num_samples = 0
+
+    # Toggle for evaluation
+    model.eval()
+
+    with torch.no_grad():
+        sig = nn.Sigmoid()
+        for x, y in loader:
+            x = x.to(device=device)
+            y = y.to(device=device)
+            y = y.reshape((y.shape[0], 1))
+
+            scores = model(x)
+            scores = sig(scores)
+            scores = torch.round(scores)
+
+            # _,predictions= scores.max(1)  # only for multiclass classification
+            num_correct += (scores == y).sum()
+            num_samples += scores.size(0)
+
+        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct) / float(num_samples) * 100:.2f}')
+
+    # Switch back to training
+    model.train()
