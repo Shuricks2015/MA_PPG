@@ -2,12 +2,14 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 import torch.nn as nn
+import socket
 
 
 class ppgDaLiA_Dataset(Dataset):
     """
     Helper class to import PPG_Dalia
     """
+
     def __init__(self, root_dir):
         """
         Init Dataset and normalize it
@@ -57,3 +59,38 @@ def check_accuracy(loader, model, device):
 
     # Switch back to training
     model.train()
+
+
+def establish_connection():
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    ip_address = '192.168.137.2'
+    ip_port = 4000
+    s.connect((ip_address, ip_port))
+    print('Connection established')
+    x = s.makefile("r")
+    return x
+
+
+def read_segment(s, numOfSamples=192):
+    x = s.makefile("rb")
+    ppg = np.empty((numOfSamples, 4))
+    for i in range(numOfSamples):
+        message_str = x.readline
+        ppg[i, 1] = message_str
+    return ppg
+
+
+def save_checkpoint(state, file="checkpoint.pth.tar"):
+    # print("Saving Checkpoint")
+    torch.save(state, file)
+
+
+def load_checkpoint(checkpoint, model, optimizer):
+    print("Loading Checkpoint")
+    model.load_state_dict(checkpoint["state_dict"])
+    optimizer.load_state_dict(checkpoint["optimizer"])
+
+
+def oxygen_estimation(ppg_red, ppg_ir):
+    sp_o2 = 110 - 25 * ((np.sqrt(np.mean(ppg_red ** 2)) / np.mean(ppg_red)) / (np.sqrt(np.mean(ppg_ir ** 2)) / np.mean(ppg_ir)))
+    return sp_o2
