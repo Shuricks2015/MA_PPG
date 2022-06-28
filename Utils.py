@@ -85,10 +85,15 @@ def save_checkpoint(state, file="checkpoint.pth.tar"):
     torch.save(state, file)
 
 
-def load_checkpoint(checkpoint, model, optimizer):
+def load_checkpoint_w_opti(checkpoint, model, optimizer):
     print("Loading Checkpoint")
-    model.load_state_dict(checkpoint["state_dict"])
-    optimizer.load_state_dict(checkpoint["optimizer"])
+    model.load_state_dict(checkpoint['state_dict'])
+    optimizer.load_state_dict(checkpoint['optimizer'])
+
+
+def load_checkpoint(checkpoint, model):
+    print("Loading Checkpoint")
+    model.load_state_dict(checkpoint['state_dict'])
 
 
 def oxygen_estimation(ppg_red, ppg_ir):

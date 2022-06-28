@@ -1,9 +1,16 @@
-from Utils import establish_connection, read_segment, check_accuracy
+from Utils import load_checkpoint, oxygen_estimation
 import matplotlib.pyplot as plt
 import socket
 import numpy as np
+import torch
+import torch.nn as nn
+from NeuralNets import CNN_try
 
 numOfSamples = 192
+
+# Load model
+model = CNN_try()
+load_checkpoint(torch.load("checkpoints/checkpoint199.pth.tar"), model)
 
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 ip_address = '192.168.137.2'
@@ -12,11 +19,28 @@ s.connect((ip_address, ip_port))
 print('Connection established')
 x = s.makefile("r")
 
-ppg = np.empty((numOfSamples, 4))
-for i in range(numOfSamples):
-    messageStr = x.readline().split(",")
-    ppg[i, :] = messageStr
+while True:
+    ppg = np.empty((numOfSamples, 4))
+    for i in range(numOfSamples):
+        messageStr = x.readline().split(",")
+        ppg[i, :] = messageStr
 
+    # Normalize Data using min-max Normalization
+    for index in range(3, 4):
+        ppg[:, index] = (ppg[:, index] - np.min(ppg[:, index])) / (np.max(ppg[:, index]) - np.min(ppg[:, index]))
+
+    # Prep data for model input
+    ppgTensor = ((torch.tensor(ppg, dtype=torch.float32)).permute(1, 0)).reshape(4, 1, numOfSamples)
+
+    # Predict Signal Quality
+    with torch.no_grad():
+        sig = nn.Sigmoid()
+        prediction = torch.round(sig(model(ppgTensor)))
+        print(prediction)
+
+    print(oxygen_estimation(ppg[:, 2], ppg[:, 3]))
+
+# Plot the extracted signal
 ppgRRED = ppg[:, 0]
 ppgRIR = ppg[:, 1]
 ppgLRED = ppg[:, 2]
