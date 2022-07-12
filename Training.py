@@ -7,17 +7,20 @@ from Utils import ppgDaLiA_Dataset, check_accuracy, save_checkpoint
 from pathlib import Path
 import os
 from tqdm import tqdm
-from NeuralNets import CNN, CNN_try, VGG19_1D
+from NeuralNets import CNN, CNN_try, VGG19_1D, CNN_Amir_Zargari
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 # Hyperparameters
-in_channel = 1
+in_channels = 1
 num_classes = 1
-learning_rate = 1e-5
+learning_rate = 1e-4
 batch_size = 128
-num_epochs = 300
+num_epochs = 100
+
+# Accuracy
+accuracy = torch.empty(num_epochs)
 
 # Load Data
 train_set = ppgDaLiA_Dataset(str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_train/processed_dataset/')
@@ -26,7 +29,7 @@ train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True
 test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False)
 
 # Initialize Network
-model = CNN_try(in_channels=in_channel, num_classes=num_classes).to(device)
+model = CNN(in_channels=in_channels, num_classes=num_classes).to(device)
 
 # Loss and optimizer
 criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((10001 / 24359)))
@@ -67,11 +70,12 @@ for epoch in range(num_epochs):
     print("Loss for Epoch {} was {}".format(epoch, mean_loss))
 
     # check accuracy of model after epoch for best performance
-    check_accuracy(test_loader, model, device)
+    accuracy[epoch] = check_accuracy(test_loader, model, device)
 
     checkpoint = {'state_dict': model.state_dict(), 'optimizer': optimizer.state_dict(), 'mean_loss': mean_loss}
     save_checkpoint(checkpoint, "checkpoints/checkpoint{}.pth.tar".format(epoch))
 
 # Check accuracy on training & test set
+print(torch.max(accuracy),torch.argmax(accuracy))
 check_accuracy(train_loader, model, device)
 check_accuracy(test_loader, model, device)

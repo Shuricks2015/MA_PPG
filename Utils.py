@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import torch
 import numpy as np
 import torch.nn as nn
+from scipy import signal
 import socket
 
 
@@ -55,29 +56,12 @@ def check_accuracy(loader, model, device):
             num_correct += (scores == y).sum()
             num_samples += scores.size(0)
 
-        print(f'Got {num_correct} / {num_samples} with accuracy {float(num_correct) / float(num_samples) * 100:.2f}')
+        accuracy = float(num_correct) / float(num_samples) * 100
+        print(f'Got {num_correct} / {num_samples} with accuracy {accuracy:.2f}')
 
     # Switch back to training
     model.train()
-
-
-def establish_connection():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    ip_address = '192.168.137.2'
-    ip_port = 4000
-    s.connect((ip_address, ip_port))
-    print('Connection established')
-    x = s.makefile("r")
-    return x
-
-
-def read_segment(s, numOfSamples=192):
-    x = s.makefile("rb")
-    ppg = np.empty((numOfSamples, 4))
-    for i in range(numOfSamples):
-        message_str = x.readline
-        ppg[i, 1] = message_str
-    return ppg
+    return accuracy
 
 
 def save_checkpoint(state, file="checkpoint.pth.tar"):
@@ -99,3 +83,48 @@ def load_checkpoint(checkpoint, model):
 def oxygen_estimation(ppg_red, ppg_ir):
     sp_o2 = 110 - 25 * ((np.sqrt(np.mean(ppg_red ** 2)) / np.mean(ppg_red)) / (np.sqrt(np.mean(ppg_ir ** 2)) / np.mean(ppg_ir)))
     return sp_o2
+
+
+def thread_assessment(ppg, model, numOfSamples=192):
+    # Normalize data using min-max normalization
+    for index in range(3, 4):
+        ppg[:, index] = (ppg[:, index] - np.min(ppg[:, index])) / (np.max(ppg[:, index]) - np.min(ppg[:, index]))
+
+    # Prep data for model input
+    ppgTensor = ((torch.tensor(ppg, dtype=torch.float32)).permute(1, 0)).reshape(4, 1, numOfSamples)
+
+    # Predict signal quality
+    with torch.no_grad():
+        sig = nn.Sigmoid()
+        prediction = torch.round(sig(model(ppgTensor)))
+        print(prediction)
+
+    # Oxygen saturation
+    print(oxygen_estimation(ppg[:, 2], ppg[:, 3]))
+
+
+def thread_reading(s, numOfSamples=192):
+    x = s.makefile("r")
+    ppg = np.empty((numOfSamples, 4))
+    for i in range(numOfSamples):
+        messageStr = x.readline().split(",")
+        ppg[i, :] = messageStr
+    return ppg
+
+
+def minmax_normalization(ppg):
+    ppg_norm = (ppg - min(ppg)) / (max(ppg) - min(ppg))
+    return ppg_norm
+
+
+def butter_filter(ppg):
+    fs = 100
+    low_end = 0.9 / (fs / 2)
+    high_end = 5 / (fs / 2)
+    filter_order = 2
+
+    sos = signal.butter(filter_order, [low_end, high_end], btype='bandpass', output='sos')
+    filtered_ppg = signal.sosfilt(sos, ppg)
+
+    ppg_norm = minmax_normalization(filtered_ppg)
+    return ppg_norm
