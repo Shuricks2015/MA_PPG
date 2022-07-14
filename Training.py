@@ -8,6 +8,7 @@ from pathlib import Path
 import os
 from tqdm import tqdm
 from NeuralNets import CNN, CNN_try, VGG19_1D, CNN_Amir_Zargari
+import matplotlib.pyplot as plt
 
 # Set device
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -17,7 +18,7 @@ in_channels = 1
 num_classes = 1
 learning_rate = 1e-4
 batch_size = 128
-num_epochs = 100
+num_epochs = 20
 
 # Accuracy
 accuracy = torch.empty(num_epochs)
@@ -29,13 +30,26 @@ train_loader = DataLoader(dataset=train_set, batch_size=batch_size, shuffle=True
 test_loader = DataLoader(dataset=test_set, batch_size=batch_size, shuffle=False)
 
 # Initialize Network
-model = CNN(in_channels=in_channels, num_classes=num_classes).to(device)
+model = CNN_try(in_channels=in_channels, num_classes=num_classes).to(device)
 
 # Loss and optimizer
 criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor((10001 / 24359)))
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=5, verbose=True)
+"""
+data, targets = next(iter(train_loader))
+data = data.reshape(192)
 
+fig = plt.figure()
+ax1 = fig.add_subplot(1, 1, 1)
+par1 = ax1.twinx()
+ax1.plot(data, color='blue')
+if targets == 1:
+    ax1.set_facecolor(color='red')
+plt.show()
+
+exit()
+"""
 # Train network
 for epoch in range(num_epochs):
     losses = []

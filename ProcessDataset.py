@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from pathlib import Path
+from Utils import minmax_normalization
 
 data_dir_train = str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_train/processed_dataset/'
 data_dir_test = str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_test/processed_dataset/'
@@ -18,6 +19,13 @@ x_train = np.reshape(x_train, (34360, 192))
 y_train = np.reshape(y_train, (34360, 192))
 x_test = np.reshape(x_test, (8690, 192))
 y_test = np.reshape(y_test, (8690, 192))
+
+# Normalize Data
+for idx, signal in enumerate(x_train):
+    x_train[idx] = minmax_normalization(signal)
+
+for idx, signal in enumerate(x_test):
+    x_test[idx] = minmax_normalization(signal)
 
 # If there are more than 19 samples marked as artifact choose bad quality for segment (SNR > 90%)
 for index, data in enumerate(y_train[:]):

@@ -18,8 +18,8 @@ class ppgDaLiA_Dataset(Dataset):
         self.x = torch.tensor(np.load(root_dir + 'MA_segmented_ppg.npy'), dtype=torch.float32)
         self.y = torch.tensor(np.load(root_dir + 'MA_labels.npy'), dtype=torch.float32)
         self.x = torch.reshape(self.x, (self.x.shape[0], 1, self.x.shape[1]))
-        std, mean = torch.std_mean(self.x)
-        self.x = (self.x - mean) / std
+        # std, mean = torch.std_mean(self.x)
+        # self.x = (self.x - mean) / std
 
     def __len__(self):
         return len(self.y)
@@ -93,6 +93,7 @@ def thread_assessment(ppg, model, numOfSamples=192):
     # Prep data for model input
     ppgTensor = ((torch.tensor(ppg, dtype=torch.float32)).permute(1, 0)).reshape(4, 1, numOfSamples)
 
+
     # Predict signal quality
     with torch.no_grad():
         sig = nn.Sigmoid()
@@ -118,9 +119,9 @@ def minmax_normalization(ppg):
 
 
 def butter_filter(ppg):
-    fs = 100
-    low_end = 0.9 / (fs / 2)
-    high_end = 5 / (fs / 2)
+    fs = 64
+    low_end = 0.67 / (fs / 2)
+    high_end = 4.5 / (fs / 2)
     filter_order = 2
 
     sos = signal.butter(filter_order, [low_end, high_end], btype='bandpass', output='sos')
@@ -128,3 +129,10 @@ def butter_filter(ppg):
 
     ppg_norm = minmax_normalization(filtered_ppg)
     return ppg_norm
+
+
+def get_edges(prediction):
+    x = torch.where(prediction == 1)
+
+
+
