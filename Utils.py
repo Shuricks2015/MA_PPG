@@ -11,13 +11,18 @@ class ppgDaLiA_Dataset(Dataset):
     Helper class to import PPG_Dalia
     """
 
-    def __init__(self, root_dir):
+    def __init__(self, root_dir, recurrence):
         """
         Init Dataset and normalize it
         """
-        self.x = torch.tensor(np.load(root_dir + 'MA_segmented_ppg.npy'), dtype=torch.float32)
-        self.y = torch.tensor(np.load(root_dir + 'MA_labels.npy'), dtype=torch.float32)
-        self.x = torch.reshape(self.x, (self.x.shape[0], 1, self.x.shape[1]))
+        if recurrence:
+            self.x = torch.tensor(np.load(root_dir + 'MA_segmented_recurrence_ppg.npy'), dtype=torch.float32)
+            self.y = torch.tensor(np.load(root_dir + 'MA_labels_recurrence.npy'), dtype=torch.float32)
+            self.x = torch.reshape(self.x, (self.x.shape[0], 1, self.x.shape[1], self.x.shape[2]))
+        else:
+            self.x = torch.tensor(np.load(root_dir + 'MA_segmented_ppg.npy'), dtype=torch.float32)
+            self.y = torch.tensor(np.load(root_dir + 'MA_labels.npy'), dtype=torch.float32)
+            self.x = torch.reshape(self.x, (self.x.shape[0], 1, self.x.shape[1]))
         # std, mean = torch.std_mean(self.x)
         # self.x = (self.x - mean) / std
 
@@ -93,7 +98,6 @@ def thread_assessment(ppg, model, numOfSamples=192):
     # Prep data for model input
     ppgTensor = ((torch.tensor(ppg, dtype=torch.float32)).permute(1, 0)).reshape(4, 1, numOfSamples)
 
-
     # Predict signal quality
     with torch.no_grad():
         sig = nn.Sigmoid()
@@ -114,25 +118,25 @@ def thread_reading(s, numOfSamples=192):
 
 
 def minmax_normalization(ppg):
-    ppg_norm = (ppg - min(ppg)) / (max(ppg) - min(ppg))
-    return ppg_norm
+    if min(ppg) == max(ppg):
+        # signal is only 1 value, returns 1 for the whole signal
+        return ppg/max(ppg)
+    else:
+        # returns values in range [0, 1]
+        ppg_norm = (ppg - min(ppg)) / (max(ppg) - min(ppg))
+        return ppg_norm
 
 
-def butter_filter(ppg):
-    fs = 64
-    low_end = 0.67 / (fs / 2)
-    high_end = 4.5 / (fs / 2)
-    filter_order = 2
-
-    sos = signal.butter(filter_order, [low_end, high_end], btype='bandpass', output='sos')
-    filtered_ppg = signal.sosfilt(sos, ppg)
-
+def band_filter(ppg, sos):
+    filtered_ppg = signal.filtfilt(sos, 1.0, ppg)
     ppg_norm = minmax_normalization(filtered_ppg)
     return ppg_norm
 
 
-def get_edges(prediction):
-    x = torch.where(prediction == 1)
-
-
-
+def filter_creation():
+    fs = 100
+    low_end = 0.9
+    high_end = 5
+    ntaps = 16
+    sos = signal.firwin(ntaps, [low_end, high_end], fs=fs, pass_zero='bandpass')
+    return sos

@@ -5,7 +5,7 @@ import torch.nn.functional as F
 
 
 class CNN(nn.Module):
-    def __init__(self, num_classes, in_channels=1, dropout=0.25):
+    def __init__(self, num_classes=1, in_channels=1, dropout=0.25):
         """
         Create simple CNN
         :param num_classes: number of classes
@@ -115,7 +115,7 @@ class VGG19_1D(nn.Module):
 
 
 class CNN_try(nn.Module):
-    def __init__(self, num_classes=1, in_channels=1):
+    def __init__(self, num_classes=1, in_channels=1, dropout=0.5):
         super(CNN_try, self).__init__()
         self.features = nn.Sequential(
             nn.Conv1d(in_channels, out_channels=8, kernel_size=3, padding=1),
@@ -148,9 +148,11 @@ class CNN_try(nn.Module):
             nn.Linear(6*128, 128),
             nn.ReLU(inplace=True),
             nn.BatchNorm1d(128),
+            nn.Dropout(p=dropout),
             nn.Linear(128, 32),
             nn.ReLU(inplace=True),
             nn.BatchNorm1d(32),
+            nn.Dropout(p=dropout),
             nn.Linear(32, num_classes)
         )
 
@@ -182,6 +184,35 @@ class CNN_Amir_Zargari(nn.Module):
             nn.Linear(32, 16),
             nn.ReLU(inplace=True),
             nn.Linear(16, num_classes)
+        )
+
+    def forward(self, x):
+        x = self.features(x)
+        x = torch.flatten(x,1)
+        x = self.classifier(x)
+        return x
+
+
+class CNN_2D(nn.Module):
+    def __init__(self, num_classes=1, in_channels=1, dropout=0.5):
+        super(CNN_2D, self).__init__()
+        self.features = nn.Sequential(
+            nn.Conv2d(in_channels, out_channels=32, kernel_size=2, padding=0),
+            nn.BatchNorm2d(32),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.BatchNorm2d(32),
+            nn.Conv2d(32, 64, kernel_size=2, padding=0),
+            nn.BatchNorm2d(64),
+            nn.ReLU(inplace=True),
+            nn.MaxPool2d(kernel_size=2, stride=2),
+            nn.BatchNorm2d(64),
+        )
+        self.classifier = nn.Sequential(
+            nn.Linear(64*47*47, 1024),
+            nn.ReLU(inplace=True),
+            nn.Dropout(p=dropout),
+            nn.Linear(1024, num_classes)
         )
 
     def forward(self, x):

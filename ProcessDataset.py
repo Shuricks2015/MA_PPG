@@ -2,6 +2,11 @@ import os
 import numpy as np
 from pathlib import Path
 from Utils import minmax_normalization
+from pyts.image import RecurrencePlot
+
+recurrence = True
+
+threshold = 19  # If the threshold is labeled noisy signal is labeled noisy
 
 data_dir_train = str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_train/processed_dataset/'
 data_dir_test = str(Path(os.getcwd())) + '/dataset/new_PPG_DaLiA_test/processed_dataset/'
@@ -29,25 +34,38 @@ for idx, signal in enumerate(x_test):
 
 # If there are more than 19 samples marked as artifact choose bad quality for segment (SNR > 90%)
 for index, data in enumerate(y_train[:]):
-    if np.count_nonzero(data == 1) > 19:
+    if np.count_nonzero(data == 1) > threshold:
         label_train[index] = 1
     else:
         label_train[index] = 0
 
 for index, data in enumerate(y_test[:]):
-    if np.count_nonzero(data == 1) > 19:
+    if np.count_nonzero(data == 1) > threshold:
         label_test[index] = 1
     else:
         label_test[index] = 0
 
-# save segments and respective labels
-np.save(data_dir_train + 'MA_segmented_ppg.npy', x_train)
-np.save(data_dir_train + 'MA_labels.npy', label_train)
-np.save(data_dir_test + 'MA_segmented_ppg.npy', x_test)
-np.save(data_dir_test + 'MA_labels.npy', label_test)
+if recurrence:
+    rp = RecurrencePlot()
+    x_train = rp.transform(x_train)
+    x_test = rp.transform(x_test)
 
+if recurrence:
+    np.save(data_dir_train + 'MA_segmented_recurrence_ppg.npy', x_train)
+    np.save(data_dir_train + 'MA_labels_recurrence.npy', label_train)
+    np.save(data_dir_test + 'MA_segmented_recurrence_ppg.npy', x_test)
+    np.save(data_dir_test + 'MA_labels_recurrence.npy', label_test)
+# save segments and respective labels
+else:
+    np.save(data_dir_train + 'MA_segmented_ppg.npy', x_train)
+    np.save(data_dir_train + 'MA_labels.npy', label_train)
+    np.save(data_dir_test + 'MA_segmented_ppg.npy', x_test)
+    np.save(data_dir_test + 'MA_labels.npy', label_test)
+
+"""
 print(np.count_nonzero(label_train == 1) + np.count_nonzero(label_test == 1))
 print(len(label_train))
 print(np.count_nonzero(label_train == 1))
 print(len(label_test))
 print(np.count_nonzero(label_test == 1))
+"""
