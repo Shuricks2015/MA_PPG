@@ -5,6 +5,7 @@
 # -------------------------------------------------------------------------------------------------
 
 # Import all packages
+import math
 import threading as thr
 import socket
 import time
@@ -23,43 +24,44 @@ import NeuralNets
 
 # Define global parameters
 # Buffer for arriving PPG message from Serial
-global message
 message = queue.Queue()
-# Buffer for arriving time (in milliseconds) of PPG messages 
-global messageTime
+# Buffer for arriving time (in milliseconds) of PPG messages
 messageTime = queue.Queue()
 # Vector with deencrypted PPG data
 global ppg
 # PPG vector buffer
-global ppgQueue
 ppgQueue = queue.Queue()
 # Time buffer for PPG data based on the counter and the frequency
 global ppgTime
 # ppgTime = queue.Queue()
-# Total amount of samples (depends on number of seconds given by user in command window)
-global samplesT
 # Flag to indicate if the message was deencrypted (0=not deencrypted yet, 1=already deencrypted)
-global analysisFinished
 analysisFinished = 0
 # Flag to indicate if the message has already arrived completely from the device (0=not completely, 1=measurement fnished)
-global messageReady
 messageReady = 0
 # Filename with date and time of each measurement (everytime the program runs)
-global filename
 now = datetime.now()
 dateTime = now.strftime('%Y-%m-%d_h%H-m%M-s%S')
 filename = 'samplesAndVideos/' + dateTime
-global millisecondsVid
 millisecondsVid = []
+# Length of signal segment
 time_segment = 3
+# Numbers of samples from ELCAT(100Hz) in signal segment
 numOfSamples = 100 * time_segment
+# Numbers of samples in signal segment matching with database PPG_DaLiA(64Hz)
 numToResample = 64 * time_segment
-halfNumOfSamples = int(numOfSamples / 2)
+# Numbers of channels from ELCAT
 numOfChannels = 4
+# Model to load and predict with
 model = NeuralNets.CNN_try()
+# Load checkpoint of model, checkpoint must match with selected model
 Utils.load_checkpoint(torch.load("checkpoints/checkpoint99.pth.tar"), model)
+# To store predictions in
 prediction = torch.Tensor()
+# If a savefile should be created
+saveData = False
 
+# Half numbers of samples stored to only calculate it once
+halfNumOfSamples = int(numOfSamples / 2)
 """
 # THREAD TO PLOT AND SAVE VIDEO
 class App1(thr.Thread):
@@ -192,6 +194,7 @@ class App4(thr.Thread):
         while analysisFinished == 0:
             time.sleep(0.5)
             if len(ppg[halfNumOfSamples * count:]) >= numOfSamples:
+                # Get starting time for model prediction
                 start = time.time()
                 ppg_sliced = ppg[halfNumOfSamples * count:halfNumOfSamples * count + numOfSamples]
                 for index in range(numOfChannels):
@@ -199,17 +202,19 @@ class App4(thr.Thread):
                     ppg_sliced_resa[:, index] = signal.resample(ppg_sliced[:, index], numToResample)
 
                 # Reshape for model input
-                ppgTensor = ((torch.tensor(ppg_sliced_resa, dtype=torch.float32)).permute(1, 0)).reshape(numOfChannels, 1, numToResample)
+                ppgTensor = ((torch.tensor(ppg_sliced_resa, dtype=torch.float32)).permute(1, 0)).reshape(numOfChannels,
+                                                                                                         1,
+                                                                                                         numToResample)
 
                 # Make Predictions
                 with torch.no_grad():
-                    prediction = torch.cat((prediction, torch.round(sig(model(ppgTensor)).flatten())))
-
+                    prediction = torch.cat((prediction, torch.round(sig(model(ppgTensor)))), 1)
                 # Increment counter when if statement was True
                 count = count + 1
+                # Calculate time for model prediction
                 end = time.time()
-                diff = end-start
-                print("Time was {}".format(diff))
+                diff = end - start
+                # print("Time was {}".format(diff))
 
 
 # Define all threads
@@ -221,7 +226,7 @@ app4 = App4()
 # Ask per command window how many seconds of recording you wish
 txt = input("How many seconds would you like to record?: ")
 # txt = 10
-# Calculate number of samples (100 Hz)
+# Total amount of samples (depends on number of seconds given by user in command window)
 samplesT = int(txt) * 100
 
 # Start all threads
@@ -266,11 +271,17 @@ for ax in axes:
 
 ax1.set_title('PPG values from ELCAT vasoport')
 # ax2.set_xlabel('Values')
+# Prepare prediction plot in same figure
+par1 = ax1.twinx()
+par1.set_ylim(-0.2, 1.2)
+par1.set_ylabel('Signal quality')
+ch_pred, = par1.plot([], [], 'r')
 
 t = list(range(0, n))
 t1 = list(range(0, n))
 channel1 = [0] * n
 tchannel1 = [0] * n
+y2 = [np.nan] * n
 
 
 # channel2 = [0] * n
@@ -278,15 +289,16 @@ tchannel1 = [0] * n
 def init():
     ch1.set_data([], [])
     # ch2.set_data([], [])
+    ch_pred.set_data([], [])
 
-    return ch1,  # ch2,
+    return ch1, ch_pred,  # ch2,
 
 
 def animate(i):
     # ax.set_ylim(auto=True)
     ppgValues = ppgQueue.get()
-    data = ppgValues[:, 1]
-    # ax1.set_ylim(0,auto=True)
+    data = ppgValues[:, 3]
+    # ax.set_ylim(0,auto=True)
     channel1.append(float(data))
     # channel2.append(float(data))
     # ax1.set_ylim(max(channel1)*0.8,max(channel1)*1.2)
@@ -295,18 +307,38 @@ def animate(i):
     # tnewdata = ppgTime.get()
     # tchannel1.append(float(tnewdata))
     # tchannel1.pop(0)
+    if i >= numOfSamples:
+        if i % 150 == 0:
+            del y2[-301:-1]
+            if i <= numOfSamples * 1.2:
+                y2.extend([int(prediction[3, 0])] * 150)
+            else:
+                curr_pred = math.floor(i/150)-2
+                if prediction[3, curr_pred-1] == prediction[3, curr_pred]:
+                    y2.extend([int(prediction[3, curr_pred])] * 150)
+                else:
+                    y2.extend([0] * 150)
+            y2.extend([np.nan] * 150)
+
+    y2.append(np.nan)
+    y2.pop(0)
+
     if i >= n + 1:
         t1.append(i)
         t1.pop(0)
-
         ax1.set_xlim([t1[0], t1[-1]])
 
-        # plt.xticks(t1,range(len(t1)))
+    ch_pred.set_data(t1, y2)
 
+        # plt.xticks(t1,range(len(t1)))
     ch1.set_data(t1, channel1)
+    # ax1.clear()
+    ax1.set_ylim(min(channel1), max(channel1))
+    if i % 500 == 0:
+        plt.draw()
 
     # ch2.set_data(t, channel2)
-    return ch1,  # ch2
+    return ch1, ch_pred,  # ch2
 
 
 delay = 0
@@ -321,8 +353,9 @@ plt.show()
 filenamePPG = filename + '_PPGdataFromEthernet.csv'
 # np.savetxt(filenamePPG,timeAndPPG,delimiter=',', newline='\n',
 # header='Time [ms],tPPG-R-RED,tPPG-R-IR,tPPR-L-RED,tPPG-L-IR,NELLCOR-RED,NELLCOR-IR,rPPG-R-RED,rPPG-R-IR,rPPR-L-RED,rPPG-L-IR,accel-R-X,accel-L-X,accel-R-Y,accel-L-Y,accel-R-Z,accel-L-Z,Temp-R,Temp-L,PressureTank,Pressure-R,Pressure-L,Dummy')
-np.savetxt(filenamePPG, ppg, delimiter=',', newline='\n',
-           header='tPPG-R-RED,tPPG-R-IR,tPPR-L-RED,tPPG-L-IR,NELLCOR-RED,NELLCOR-IR,rPPG-R-RED,rPPG-R-IR,rPPR-L-RED,rPPG-L-IR,accel-R-X,accel-L-X,accel-R-Y,accel-L-Y,accel-R-Z,accel-L-Z,Temp-R,Temp-L,PressureTank,Pressure-R,Pressure-L,Dummy')
+if saveData:
+    np.savetxt(filenamePPG, ppg, delimiter=',', newline='\n',
+               header='tPPG-R-RED,tPPG-R-IR,tPPR-L-RED,tPPG-L-IR,NELLCOR-RED,NELLCOR-IR,rPPG-R-RED,rPPG-R-IR,rPPR-L-RED,rPPG-L-IR,accel-R-X,accel-L-X,accel-R-Y,accel-L-Y,accel-R-Z,accel-L-Z,Temp-R,Temp-L,PressureTank,Pressure-R,Pressure-L,Dummy')
 
 """
 a=ppgTime
@@ -385,5 +418,6 @@ plt.legend(loc="upper right")
 fig2.tight_layout()
 plt.show()
 
-prediction = prediction.reshape((int(len(prediction)/numOfChannels), int(numOfChannels)))
+# prediction = prediction.reshape((int(len(prediction) / numOfChannels), int(numOfChannels)))
+print(prediction.shape)
 print(prediction)

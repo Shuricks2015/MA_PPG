@@ -1,7 +1,12 @@
+# Author: Nils Froehling
+
 # Imports
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+###################################
+# Define different neural networks
+###################################
 
 
 class CNN(nn.Module):
@@ -163,6 +168,7 @@ class CNN_try(nn.Module):
         return x
 
 
+# CNN after paper from Amir Zargari
 class CNN_Amir_Zargari(nn.Module):
     def __init__(self, num_classes=1, in_channels=1):
         super(CNN_Amir_Zargari, self).__init__()
@@ -193,6 +199,7 @@ class CNN_Amir_Zargari(nn.Module):
         return x
 
 
+# 2D-CNN used for RecurrencePlots
 class CNN_2D(nn.Module):
     def __init__(self, num_classes=1, in_channels=1, dropout=0.5):
         super(CNN_2D, self).__init__()

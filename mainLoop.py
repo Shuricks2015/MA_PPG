@@ -1,3 +1,5 @@
+# Author: Nils Froehling
+
 import Utils
 import matplotlib.pyplot as plt
 import socket
@@ -7,7 +9,6 @@ import torch.nn as nn
 from NeuralNets import CNN_try
 import time
 from scipy import signal
-import threading
 
 Reading_time = 3
 numToResample = 64 * Reading_time
