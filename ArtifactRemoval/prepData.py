@@ -18,23 +18,26 @@ dirUp, _ = os.path.split(wd)
 pathStudy = os.path.join(dirUp, filename)
 
 # temporary
-probandNumber = 15
-
-
-def get_elcat_ppg(dataELCAT):
-    # Extract only Time and PPG data from ELCAT measurement
-    # Typo in second-last index while performing study
-    return dataELCAT.loc[:, ["# Time [ms]", "tPPG-R-RED", "tPPG-R-IR", "tPPR-L-RED", "tPPG-L-IR", "rPPG-R-RED",
-                             "rPPG-R-IR", "rPPR-L-RED", "rPPG-L-IR"]]
-
+probandNumber = 1
 
 # Read in csv data using pandas
 try:
-    dataElcat = pd.read_csv(pathStudy + "{}".format(probandNumber) + "/NOMOVE/x01/MotionArts_2022-08-02_h14-m34-s18_PPGdataFromEthernet.csv")
+    dataElcat = pd.read_csv(pathStudy + "{}".format(
+        probandNumber) + "/NOMOVE/x01/MotionArts_2022-08-01_h14-m12-s35_PPGdataFromEthernet.csv",
+                            usecols=["# Time [ms]", "tPPG-R-RED", "tPPG-R-IR", "tPPR-L-RED", "tPPG-L-IR", "rPPG-R-RED",
+                                     "rPPG-R-IR", "rPPR-L-RED", "rPPG-L-IR"])
+
+    dataO2philips = pd.read_csv(pathStudy + "{}".format(
+        probandNumber) + "/NOMOVE/x01/MotionArts_2022-08-01_h14-m12-s35_Philips_MPDataExport.csv", usecols=[2, 3, 4])
+
+    # PPG is mirrored!!!
+    dataPPGphilips = pd.read_csv(pathStudy + "{}".format(
+        probandNumber) + "/NOMOVE/x01/MotionArts_2022-08-01_h14-m12-s35_Philips_NOM_PLETHWaveExport.csv",
+                                 usecols=[2, 3], names=['SystemLocalTime', 'PPG'])
 except:
     print("CSV-file could not be opened. Check if location is right or file is already open")
 
-ppgDataElcat = get_elcat_ppg(dataElcat)
-
-dateStamp = datetime.datetime.fromtimestamp(ppgDataElcat.iloc[0, 0]/1000.0)
+# SystemLocalTime is corresponding to the time from ELCAT
+timeO2Philips = dataO2philips.loc[:, "SystemLocalTime"]
+dateStamp = datetime.datetime.fromtimestamp(dataElcat.iloc[0, 0] / 1000.0)
 print(dateStamp)

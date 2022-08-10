@@ -140,3 +140,18 @@ def filter_creation():
     ntaps = 16
     sos = signal.firwin(ntaps, [low_end, high_end], fs=fs, pass_zero='bandpass')
     return sos
+
+
+def filter_creation2():
+    fs = 100
+    low_end = 0.9
+    high_end = 5
+    order = 20
+    sos = signal.butter(order, [low_end, high_end], btype='bandpass', fs=fs, output='sos')
+    return sos
+
+
+def band_filter2(ppg, sos):
+    filtered_ppg = signal.sosfiltfilt(sos, ppg)
+    ppg_norm = minmax_normalization(filtered_ppg)
+    return ppg_norm
