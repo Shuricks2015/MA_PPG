@@ -97,6 +97,7 @@ def get_next_data():
     global probandNumber
     global count
     global label
+    global sample_count
 
     # Check if data from one Proband is finished
     if count > 9:
@@ -107,6 +108,8 @@ def get_next_data():
         label = []
         # Switch to next proband
         probandNumber = probandNumber + 1
+        # Reset sample_count
+        sample_count = 0
         # Check if there are still probands with data (no data after 18)
         if probandNumber == 19:
             exit()
@@ -128,11 +131,11 @@ def get_next_data():
     elif 3 < count < 7:
         path_to_file = os.path.join(pathStudy, 'Proband_{}/HORIZONTAL/x0{}/'.format(probandNumber, count - 3))
         # Info reflects all 3 repetitions with count starting at 1
-        movement = 'HORIZONTAL {}'.format(count % 3)
+        movement = 'HORIZONTAL {}'.format(count-3)
     elif 6 < count < 10:
         path_to_file = os.path.join(pathStudy, 'Proband_{}/RANDOMNAME/x0{}/'.format(probandNumber, count - 6))
         # Info reflects all 3 repetitions with count starting at 1
-        movement = 'RANDOMNAME {}'.foramt(count % 3)
+        movement = 'RANDOMNAME {}'.format(count-6)
 
     # Get name of all files in directory
     dirs = os.listdir(path_to_file)
