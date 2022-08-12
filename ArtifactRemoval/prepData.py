@@ -6,6 +6,10 @@ import tkinter as tk
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.pyplot as plt
 import numpy as np
+from Utils import *
+
+# proband to start with
+probandNumber = 2
 
 #######################################
 # SETUP STUDY PATH
@@ -19,12 +23,15 @@ filename = "STUDY_MotionArtifacts_NilsFroehling/"
 dirUp, _ = os.path.split(wd)
 # Path to study data
 pathStudy = os.path.join(dirUp, filename)
-# Number of Proband to start with
-probandNumber = 1
 # Create directory for first proband if not there
 if not os.path.exists('study_dataset/Proband_{}'.format(probandNumber)):
     os.makedirs('study_dataset/Proband_{}'.format(probandNumber))
     print('Created directory for next proband')
+
+#######################################
+# SETUP ADDITIONAL PARAMETERS
+#######################################
+
 # size of signal interval
 interval = 300
 
@@ -42,6 +49,8 @@ start = 0
 # To store labels for every proband individually
 label = []
 
+# Create bandpass filter
+sos = filter_creation2()
 
 # Action to take when Buttons pressed
 def actiongood():
@@ -57,7 +66,8 @@ def actionpoor():
 def general_action():
     # These values from outer scope are changed in this function therefore global
     global sample_count
-    temparray = np.array(data.iloc[start:start + interval, [1, 3]].to_numpy())
+    temparray = data.iloc[start:start + interval, [1, 3]].to_numpy()
+    # Unfiltered data is saved
     np.save('study_dataset/Proband_{}/sample'.format(probandNumber) + str(sample_count), temparray)
     sample_count = sample_count + 1
     plot_next()
@@ -67,11 +77,12 @@ def general_action():
 def plot_next():
     # These values from outer scope are changed in this function therefore global
     global data
+    global filt_data
     global count_plot
     global start
     # Use slicing here
     if max(data.shape) < (count_plot + 2) * int(interval/2):
-        data = get_next_data()
+        data, filt_data = get_next_data()
         count_plot = 1
     else:
         count_plot = count_plot + 1
@@ -80,11 +91,11 @@ def plot_next():
 
     fig2.clear()
     fig3.clear()
-    fig2.plot(data.iloc[start:start + interval, 1], label='PPG-R-RED')
+    fig2.plot(filt_data.iloc[start:start + interval, 0], label='PPG-R-RED')
     fig2.legend(loc='upper right')
     fig2.set_xlabel('# Samples')
     fig2.set_ylabel('PPG Amplitude')
-    fig3.plot(data.iloc[start:start + interval, 3], label='PPG-L-RED')
+    fig3.plot(filt_data.iloc[start:start + interval, 1], label='PPG-L-RED')
     fig3.legend(loc='upper right')
     fig3.set_xlabel('# Samples')
     fig3.set_ylabel('PPG Amplitude')
@@ -150,7 +161,12 @@ def get_next_data():
     infolabel.configure(text='Proband ' + str(probandNumber) + ' ' + movement)
     # Increase counter because new file was read
     count = count + 1
-    return dataElcat
+    # Filter whole signal and store it
+    filt1 = band_filter2(dataElcat.iloc[:, 1].to_numpy(), sos)
+    filt2 = band_filter2(dataElcat.iloc[:, 3].to_numpy(), sos)
+    filtered_data = pd.DataFrame([filt1, filt2]).transpose()
+
+    return dataElcat, filtered_data
 
 
 root = tk.Tk()
@@ -163,7 +179,7 @@ canvas1.get_tk_widget().pack()
 infolabel = tk.Label(root, text='temp', font=("Arial", 20))
 infolabel.pack()
 
-data = get_next_data()
+data, filt_data = get_next_data()
 plot_next()
 
 tk.Button(root, text='Good quality', font=("Arial", 20), command=actiongood, background='green').pack(side='left', ipadx=30, ipady=30, expand=True)

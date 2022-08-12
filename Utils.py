@@ -146,7 +146,7 @@ def filter_creation2():
     fs = 100
     low_end = 0.9
     high_end = 5
-    order = 20
+    order = 6
     sos = signal.butter(order, [low_end, high_end], btype='bandpass', fs=fs, output='sos')
     return sos
 
