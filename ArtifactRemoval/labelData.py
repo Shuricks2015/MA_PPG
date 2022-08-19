@@ -9,7 +9,7 @@ import numpy as np
 from Utils import *
 
 # proband to start with
-probandNumber = 6
+probandNumber = 8
 
 #######################################
 # SETUP STUDY PATH

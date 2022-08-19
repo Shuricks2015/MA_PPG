@@ -1,8 +1,10 @@
+import pandas as pd
 from torch.utils.data import Dataset
 import torch
 import numpy as np
 import torch.nn as nn
 from scipy import signal
+import os
 import socket
 
 
@@ -31,6 +33,32 @@ class ppgDaLiA_Dataset(Dataset):
 
     def __getitem__(self, index):
         return self.x[index], self.y[index]
+
+
+class study_Dataset(Dataset):
+    """
+    Helper class to import study_dataset
+    """
+
+    def __init__(self, root_dir, csv):
+        """
+        Init Dataset
+        """
+        self.annotations = pd.read_csv(root_dir + csv, header=None)
+        self.root_dir = root_dir
+        self.filter = filter_creation2()
+
+    def __len__(self):
+        return len(self.annotations)
+
+    def __getitem__(self, index):
+        data_path = os.path.join(self.root_dir, "Proband_{}/sample{}.npy".format(int(self.annotations.iloc[index, 2]),
+                                                                                 int(self.annotations.iloc[index, 0])))
+        data = np.load(data_path)
+        data = band_filter2(data[:, 0], self.filter)
+        data = torch.tensor(data, dtype=torch.float32).view(1, -1)
+        label = torch.tensor(self.annotations.iloc[index, 1], dtype=torch.float32)
+        return data, label
 
 
 def check_accuracy(loader, model, device):
@@ -86,45 +114,31 @@ def load_checkpoint(checkpoint, model):
 
 
 def oxygen_estimation(ppg_red, ppg_ir):
-    sp_o2 = 110 - 25 * ((np.sqrt(np.mean(ppg_red ** 2)) / np.mean(ppg_red)) / (np.sqrt(np.mean(ppg_ir ** 2)) / np.mean(ppg_ir)))
+    sp_o2 = 110 - 25 * (
+                (np.sqrt(np.mean(ppg_red ** 2)) / np.mean(ppg_red)) / (np.sqrt(np.mean(ppg_ir ** 2)) / np.mean(ppg_ir)))
     return sp_o2
-
-
-def thread_assessment(ppg, model, numOfSamples=192):
-    # Normalize data using min-max normalization
-    for index in range(3, 4):
-        ppg[:, index] = (ppg[:, index] - np.min(ppg[:, index])) / (np.max(ppg[:, index]) - np.min(ppg[:, index]))
-
-    # Prep data for model input
-    ppgTensor = ((torch.tensor(ppg, dtype=torch.float32)).permute(1, 0)).reshape(4, 1, numOfSamples)
-
-    # Predict signal quality
-    with torch.no_grad():
-        sig = nn.Sigmoid()
-        prediction = torch.round(sig(model(ppgTensor)))
-        print(prediction)
-
-    # Oxygen saturation
-    print(oxygen_estimation(ppg[:, 2], ppg[:, 3]))
-
-
-def thread_reading(s, numOfSamples=192):
-    x = s.makefile("r")
-    ppg = np.empty((numOfSamples, 4))
-    for i in range(numOfSamples):
-        messageStr = x.readline().split(",")
-        ppg[i, :] = messageStr
-    return ppg
 
 
 def minmax_normalization(ppg):
     if min(ppg) == max(ppg):
         # signal is only 1 value, returns 1 for the whole signal
-        return ppg/max(ppg)
+        return ppg / max(ppg)
     else:
         # returns values in range [0, 1]
         ppg_norm = (ppg - min(ppg)) / (max(ppg) - min(ppg))
         return ppg_norm
+
+
+def normalization_customrange(data_signal, newmin, newmax):
+    if min(data_signal) == max(data_signal):
+        print("whole signal was 1 value, normalized to 1")
+        return data_signal / max(data_signal)
+    else:
+        # returns values in range [newmin, newmax]
+        a = (newmax - newmin) / (max(data_signal) - min(data_signal))
+        b = newmax - a * max(data_signal)
+        newsignal = a * data_signal + b
+        return newsignal
 
 
 def band_filter(ppg, sos):
@@ -146,12 +160,12 @@ def filter_creation2():
     fs = 100
     low_end = 0.9
     high_end = 5
-    order = 6
+    order = 2
     sos = signal.butter(order, [low_end, high_end], btype='bandpass', fs=fs, output='sos')
     return sos
 
 
 def band_filter2(ppg, sos):
     filtered_ppg = signal.sosfiltfilt(sos, ppg)
-    ppg_norm = minmax_normalization(filtered_ppg)
+    ppg_norm = normalization_customrange(filtered_ppg, -1, 1)
     return ppg_norm
