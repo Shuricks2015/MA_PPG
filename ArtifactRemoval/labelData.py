@@ -9,7 +9,7 @@ import numpy as np
 from Utils import *
 
 # proband to start with
-probandNumber = 2
+probandNumber = 6
 
 #######################################
 # SETUP STUDY PATH
@@ -61,6 +61,12 @@ def actiongood():
 def actionpoor():
     label.append([sample_count, 1])
     general_action()
+
+
+def actionunusable():
+    global sample_count
+    sample_count = sample_count + 1
+    plot_next()
 
 
 def general_action():
@@ -184,6 +190,7 @@ plot_next()
 
 tk.Button(root, text='Good quality', font=("Arial", 20), command=actiongood, background='green').pack(side='left', ipadx=30, ipady=30, expand=True)
 tk.Button(root, text='Poor quality', font=("Arial", 20), command=actionpoor, background='red').pack(side='right', ipadx=30, ipady=30, expand=True)
+tk.Button(root, text='Unusable\n(Left is also corrupted)', font=("Arial", 20), command=actionunusable, background='yellow').pack(ipadx=30, ipady=14, expand=True)
 
 # Function definition if window doesn't close
 # def _quit():
