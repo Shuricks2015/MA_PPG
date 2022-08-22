@@ -9,7 +9,7 @@ import numpy as np
 from Utils import *
 
 # proband to start with
-probandNumber = 8
+probandNumber = 9
 
 #######################################
 # SETUP STUDY PATH
@@ -51,6 +51,7 @@ label = []
 
 # Create bandpass filter
 sos = filter_creation2()
+
 
 # Action to take when Buttons pressed
 def actiongood():
