@@ -9,7 +9,7 @@ import numpy as np
 from Utils import *
 
 # proband to start with
-probandNumber = 9
+probandNumber = 1
 
 #######################################
 # SETUP STUDY PATH
@@ -99,13 +99,13 @@ def plot_next():
     fig2.clear()
     fig3.clear()
     fig2.plot(filt_data.iloc[start:start + interval, 0], label='PPG-R-RED')
-    fig2.legend(loc='upper right')
-    fig2.set_xlabel('# Samples')
-    fig2.set_ylabel('PPG Amplitude')
+    fig2.legend(loc='upper right', prop={'size': 14})
+    fig2.set_xlabel('# Samples', fontsize=12)
+    fig2.set_ylabel('Amplitude', fontsize=16)
     fig3.plot(filt_data.iloc[start:start + interval, 1], label='PPG-L-RED')
-    fig3.legend(loc='upper right')
-    fig3.set_xlabel('# Samples')
-    fig3.set_ylabel('PPG Amplitude')
+    fig3.legend(loc='upper right', prop={'size': 14})
+    fig3.set_xlabel('# Samples', fontsize=12)
+    fig3.set_ylabel('Amplitude', fontsize=16)
 
     canvas1.draw()
 
@@ -200,5 +200,6 @@ tk.Button(root, text='Unusable\n(Left is also corrupted)', font=("Arial", 20), c
 #
 #
 # root.protocol("WM_DELETE_WINDOW", _quit)
+
 
 root.mainloop()
