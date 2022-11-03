@@ -14,8 +14,8 @@ from mpl_toolkits.axes_grid1 import ImageGrid
 
 
 # Set device
-# device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+# device = torch.device('cpu')
 
 # Hyperparameters
 in_channels = 1
@@ -61,7 +61,7 @@ train_loader, test_loader = get_loader(b_size=batch_size)
 if recurrence:
     model = CNN_2D(in_channels=1, num_classes=num_classes).to(device)
 else:
-    model = CNN_try(in_channels=in_channels, num_classes=num_classes, dropout=0.5).to(device)
+    model = InceptionNet(in_channels=in_channels, num_classes=num_classes).to(device)
 
 # Loss and optimizer
 criterion = nn.BCEWithLogitsLoss()  # pos_weight=torch.tensor((10001 / 24359))
